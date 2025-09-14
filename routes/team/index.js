@@ -5,9 +5,9 @@ import pool from '../../db.js';
 
 const router = express.Router();
 
-// Helper function to generate unique team code
+// Helper function to generate unique team code (integer)
 const generateTeamCode = () => {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
+    return Math.floor(Math.random() * 900000) + 100000; // 6-digit number
 };
 
 // Create Team API
@@ -48,8 +48,8 @@ router.post('/create', async (req, res) => {
         try {
             // Create team
             const teamResult = await pool.query(
-                'INSERT INTO teams (name, description, team_code) VALUES ($1, $2, $3) RETURNING *',
-                [teamName, teamDescription || '', teamCode]
+                'INSERT INTO teams (name, description, team_code, created_by) VALUES ($1, $2, $3, $4) RETURNING *',
+                [teamName, teamDescription || '', teamCode, userName]
             );
             const team = teamResult.rows[0];
 

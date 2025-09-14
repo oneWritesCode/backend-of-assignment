@@ -2,7 +2,11 @@ import pool from './db.js';
 
 const initializeDatabase = async () => {
     try {
-        console.log('Initializing database...');
+        console.log('🔄 Initializing database...');
+        
+        // Test connection first
+        const testResult = await pool.query('SELECT NOW()');
+        console.log('✅ Database connection successful:', testResult.rows[0].now);
         
         // Create teams table
         await pool.query(`
@@ -43,15 +47,13 @@ const initializeDatabase = async () => {
             )
         `);
 
-        console.log('Database tables created successfully!');
-        
-        // Test connection
-        const result = await pool.query('SELECT NOW()');
-        console.log('Database connection successful:', result.rows[0].now);
+        console.log('✅ Database tables created successfully!');
         
     } catch (error) {
-        console.error('Database initialization failed:', error.message);
-        throw error;
+        console.error('❌ Database initialization failed:', error.message);
+        console.log('⚠️  Server will continue running, but database operations may fail');
+        // Don't throw error to prevent server crash
+        // throw error;
     }
 };
 
