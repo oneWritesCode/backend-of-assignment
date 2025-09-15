@@ -16,7 +16,7 @@ router.post('/register', async (req, res) => {
                 error: 'Email, password, and fullname are required'
             });
         }
-        
+
         // Check if user already exists
         const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
         if (existingUser.rows.length > 0) {
@@ -28,8 +28,8 @@ router.post('/register', async (req, res) => {
 
         // Create user (without team initially)
         const userResult = await pool.query(
-            'INSERT INTO users (fullname, email, password) VALUES ($1, $2, $3) RETURNING *',
-            [fullName, email, hashedPassword]
+            'INSERT INTO users (fullname, email, password, created_by) VALUES ($1, $2, $3,$4) RETURNING *',
+            [fullName, email, hashedPassword, 'deepak']
         );
         const user = userResult.rows[0];
 
@@ -39,7 +39,7 @@ router.post('/register', async (req, res) => {
                 userId: user.id,
                 email: user.email,
             },
-            process.env.JWT_SECRET ,
+            process.env.JWT_SECRET,
             { expiresIn: '240h' }
         );
 
@@ -91,9 +91,9 @@ router.post('/login', async (req, res) => {
                 userId: user.id,
                 email: user.email,
                 teamId: user.team_id,
-                role: user.role 
+                role: user.role
             },
-            process.env.JWT_SECRET ,
+            process.env.JWT_SECRET,
             { expiresIn: '24h' }
         );
 
