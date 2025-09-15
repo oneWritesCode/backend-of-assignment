@@ -10,6 +10,10 @@ router.post('/register', async (req, res) => {
     try {
         const { email, password, fullName } = req.body;
 
+        console.log("email: ", email)
+        console.log("pwd: ", password)
+        console.log("fullname: ", fullName)
+
         // Validate required fields
         if (!email || !password || !fullName) {
             return res.status(400).json({
@@ -28,8 +32,8 @@ router.post('/register', async (req, res) => {
 
         // Create user (without team initially)
         const userResult = await pool.query(
-            'INSERT INTO users (fullname, email, password, created_by) VALUES ($1, $2, $3,$4) RETURNING *',
-            [fullName, email, hashedPassword, 'deepak']
+            'INSERT INTO users (fullname, email, password) VALUES ($1, $2, $3) RETURNING *',
+            [fullName, email, hashedPassword]
         );
         const user = userResult.rows[0];
 

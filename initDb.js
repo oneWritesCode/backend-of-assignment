@@ -6,21 +6,22 @@ const initializeDatabase = async () => {
 
         // Test connection first
         const testResult = await pool.query('SELECT NOW()');
+        console.log("test Result: ", testResult)
         console.log('Database connection successful:', testResult.rows[0].now);
 
         // Create teams table
-        // await pool.query(`
-        //     CREATE TABLE IF NOT EXISTS teams (
-        //         id SERIAL PRIMARY KEY,
-        //         name VARCHAR(255) NOT NULL,
-        //         description TEXT,
-        //         team_code INTEGER NOT NULL,
-        //         created_by VARCHAR(255) NOT NULL,
-        //         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        //         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        //     )
-        // `);
-        // console.log("pool 1 done")
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS teams (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                team_code INTEGER NOT NULL,
+                created_by VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log("pool 1 done")
         // Create users table
         await pool.query(`
             CREATE TABLE IF NOT EXISTS users (
@@ -35,22 +36,22 @@ const initializeDatabase = async () => {
         console.log("pool 2 done")
 
         // Create team_members table for many-to-many relationship
-        // await pool.query(`
-        //     CREATE TABLE IF NOT EXISTS team_members (
-        //         id SERIAL PRIMARY KEY,
-        //         team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
-        //         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        //         role VARCHAR(50) DEFAULT 'member',
-        //         joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        //         UNIQUE(team_id, user_id)
-        //     )
-        // `);
-        // console.log("pool 3 done")
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS team_members (
+                id SERIAL PRIMARY KEY,
+                team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                role VARCHAR(50) DEFAULT 'member',
+                joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(team_id, user_id)
+            )
+        `);
+        console.log("pool 3 done")
 
         console.log(' Database tables created successfully!');
 
     } catch (error) {
-        console.error('Database initialization failed:', error.message);
+        console.error('Database initialization failed:', error);
         console.log('Server will continue running, but database operations may fail');
         // Don't throw error to prevent server crash
         // throw error;
