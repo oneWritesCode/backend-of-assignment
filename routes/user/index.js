@@ -13,7 +13,7 @@ router.post('/register', async (req, res) => {
         // Validate required fields
         if (!email || !password || !fullName) {
             return res.status(400).json({
-                error: 'Email, password, and full name are required'
+                error: 'Email, password, and fullname are required'
             });
         }
         
@@ -28,7 +28,7 @@ router.post('/register', async (req, res) => {
 
         // Create user (without team initially)
         const userResult = await pool.query(
-            'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *',
+            'INSERT INTO users (fullname, email, password) VALUES ($1, $2, $3) RETURNING *',
             [fullName, email, hashedPassword]
         );
         const user = userResult.rows[0];
@@ -40,7 +40,7 @@ router.post('/register', async (req, res) => {
                 email: user.email,
             },
             process.env.JWT_SECRET ,
-            { expiresIn: '24h' }
+            { expiresIn: '240h' }
         );
 
         // Return user data without password

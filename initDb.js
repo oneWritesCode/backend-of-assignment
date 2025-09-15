@@ -6,7 +6,7 @@ const initializeDatabase = async () => {
 
         // Test connection first
         const testResult = await pool.query('SELECT NOW()');
-        console.log('✅ Database connection successful:', testResult.rows[0].now);
+        console.log('Database connection successful:', testResult.rows[0].now);
 
         // Create teams table
         await pool.query(`
@@ -25,7 +25,7 @@ const initializeDatabase = async () => {
         await pool.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
+                fullname VARCHAR(255) NOT NULL, 
                 email VARCHAR(255) UNIQUE NOT NULL,
                 password VARCHAR(255) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -45,11 +45,11 @@ const initializeDatabase = async () => {
             )
         `);
 
-        console.log('✅ Database tables created successfully!');
+        console.log(' Database tables created successfully!');
 
     } catch (error) {
-        console.error('❌ Database initialization failed:', error.message);
-        console.log('⚠️  Server will continue running, but database operations may fail');
+        console.error('Database initialization failed:', error.message);
+        console.log('Server will continue running, but database operations may fail');
         // Don't throw error to prevent server crash
         // throw error;
     }
