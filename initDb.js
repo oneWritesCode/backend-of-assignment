@@ -3,11 +3,11 @@ import pool from './db.js';
 const initializeDatabase = async () => {
     try {
         console.log('🔄 Initializing database...');
-        
+
         // Test connection first
         const testResult = await pool.query('SELECT NOW()');
         console.log('✅ Database connection successful:', testResult.rows[0].now);
-        
+
         // Create teams table
         await pool.query(`
             CREATE TABLE IF NOT EXISTS teams (
@@ -28,8 +28,6 @@ const initializeDatabase = async () => {
                 name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) UNIQUE NOT NULL,
                 password VARCHAR(255) NOT NULL,
-                team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL,
-                role VARCHAR(50) DEFAULT 'member',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -48,7 +46,7 @@ const initializeDatabase = async () => {
         `);
 
         console.log('✅ Database tables created successfully!');
-        
+
     } catch (error) {
         console.error('❌ Database initialization failed:', error.message);
         console.log('⚠️  Server will continue running, but database operations may fail');

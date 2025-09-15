@@ -32,10 +32,11 @@ app.get("/", (req, res) => {
     res.json({ 
         message: "Team Management API", 
         endpoints: {
-            "POST /api/teams/create": "Create a new team",
-            "POST /api/teams/join": "Join an existing team",
+            "POST /api/users/register": "Register a new user account",
             "POST /api/users/login": "Login to access team data",
             "GET /api/users/profile": "Get user profile (requires token)",
+            "POST /api/teams/create": "Create a new team",
+            "POST /api/teams/join": "Join an existing team",
             "GET /api/teams/members": "Get team members (requires token)"
         }
     });

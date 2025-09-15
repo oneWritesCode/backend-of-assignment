@@ -5,6 +5,59 @@ import pool from '../../db.js';
 
 const router = express.Router();
 
+// Register route
+router.post('/register', async (req, res) => {
+    try {
+        const { email, password, fullName } = req.body;
+
+        // Validate required fields
+        if (!email || !password || !fullName) {
+            return res.status(400).json({
+                error: 'Email, password, and full name are required'
+            });
+        }
+        
+        // Check if user already exists
+        const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+        if (existingUser.rows.length > 0) {
+            return res.status(400).json({ error: 'User with this email already exists' });
+        }
+
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Create user (without team initially)
+        const userResult = await pool.query(
+            'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *',
+            [fullName, email, hashedPassword]
+        );
+        const user = userResult.rows[0];
+
+        // Generate JWT token
+        const token = jwt.sign(
+            {
+                userId: user.id,
+                email: user.email,
+            },
+            process.env.JWT_SECRET ,
+            { expiresIn: '24h' }
+        );
+
+        // Return user data without password
+        const { password: _, ...userWithoutPassword } = user;
+
+        res.status(201).json({
+            message: 'User registered successfully',
+            token,
+            user: userWithoutPassword
+        });
+
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // Login route
 router.post('/login', async (req, res) => {
     try {
@@ -34,19 +87,19 @@ router.post('/login', async (req, res) => {
 
         // Generate JWT token
         const token = jwt.sign(
-            { 
-                userId: user.id, 
-                email: user.email, 
+            {
+                userId: user.id,
+                email: user.email,
                 teamId: user.team_id,
                 role: user.role 
             },
-            process.env.JWT_SECRET || 'your-secret-key',
+            process.env.JWT_SECRET ,
             { expiresIn: '24h' }
         );
 
         // Return user data without password
         const { password: _, ...userWithoutPassword } = user;
-        
+
         res.json({
             message: 'Login successful',
             token,
@@ -63,13 +116,13 @@ router.post('/login', async (req, res) => {
 router.get('/profile', async (req, res) => {
     try {
         const token = req.headers.authorization?.split(' ')[1];
-        
+
         if (!token) {
             return res.status(401).json({ error: 'No token provided' });
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-        
+
         const userResult = await pool.query(
             'SELECT u.*, t.name as team_name, t.team_code FROM users u LEFT JOIN teams t ON u.team_id = t.id WHERE u.id = $1',
             [decoded.userId]
