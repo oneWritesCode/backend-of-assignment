@@ -5,45 +5,42 @@ import pool from '../../db.js';
 
 const router = express.Router();
 
-// Register route
 router.post('/register', async (req, res) => {
     try {
         const { email, password, fullName } = req.body;
 
-        // Validate required fields
+        console.log("email: ", email)
+        console.log("pwd: ", password)
+        console.log("fullname: ", fullName)
+
         if (!email || !password || !fullName) {
             return res.status(400).json({
                 error: 'Email, password, and fullname are required'
             });
         }
 
-        // Check if user already exists
         const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
         if (existingUser.rows.length > 0) {
             return res.status(400).json({ error: 'User with this email already exists' });
         }
 
-        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Create user (without team initially)
         const userResult = await pool.query(
-            'INSERT INTO users (fullname, email, password, created_by) VALUES ($1, $2, $3,$4) RETURNING *',
-            [fullName, email, hashedPassword, 'deepak']
+            'INSERT INTO users (fullname, email, password) VALUES ($1, $2, $3) RETURNING *',
+            [fullName, email, hashedPassword]
         );
         const user = userResult.rows[0];
 
-        // Generate JWT token
         const token = jwt.sign(
             {
                 userId: user.id,
                 email: user.email,
             },
-            process.env.JWT_SECRET,
-            { expiresIn: '240h' }
+            'your-secret-key',
+            { expiresIn: '24h' }
         );
 
-        // Return user data without password
         const { password: _, ...userWithoutPassword } = user;
 
         res.status(201).json({
@@ -58,7 +55,6 @@ router.post('/register', async (req, res) => {
     }
 });
 
-// Login route
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -67,9 +63,8 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ error: 'Email and password are required' });
         }
 
-        // Find user by email
         const userResult = await pool.query(
-            'SELECT u.*, t.name as team_name, t.team_code FROM users u LEFT JOIN teams t ON u.team_id = t.id WHERE u.email = $1',
+            'SELECT * FROM users WHERE email = $1',
             [email]
         );
 
@@ -79,26 +74,28 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Verify password
         const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Generate JWT token
         const token = jwt.sign(
             {
                 userId: user.id,
                 email: user.email,
-                teamId: user.team_id,
-                role: user.role
             },
             process.env.JWT_SECRET,
-            { expiresIn: '24h' }
+            { expiresIn: '240h' }
         );
 
-        // Return user data without password
         const { password: _, ...userWithoutPassword } = user;
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'lax',
+            maxAge: 240 * 60 * 60 * 1000 
+        });
 
         res.json({
             message: 'Login successful',
@@ -112,33 +109,63 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// Get user profile (protected route)
 router.get('/profile', async (req, res) => {
     try {
+        console.log('🔍 Profile route accessed');
+        
         const token = req.headers.authorization?.split(' ')[1];
+        console.log('📝 Token received:', token ? 'Token present' : 'No token');
 
         if (!token) {
+            console.log('❌ No token provided');
             return res.status(401).json({ error: 'No token provided' });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        console.log('🔐 Verifying JWT token...');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log('✅ Token verified successfully. User ID:', decoded.userId, 'Email:', decoded.email);
 
+        console.log('🔍 Fetching user data from database...');
         const userResult = await pool.query(
-            'SELECT u.*, t.name as team_name, t.team_code FROM users u LEFT JOIN teams t ON u.team_id = t.id WHERE u.id = $1',
+            'SELECT * FROM users WHERE id = $1',
             [decoded.userId]
         );
 
         const user = userResult.rows[0];
         if (!user) {
+            console.log('❌ User not found in database for ID:', decoded.userId);
             return res.status(404).json({ error: 'User not found' });
         }
 
+        console.log('✅ User found in database:', {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            created_at: user.created_at
+        });
+
         const { password, ...userWithoutPassword } = user;
-        res.json({ user: userWithoutPassword });
+        
+        console.log('📤 Sending user data to frontend:', userWithoutPassword);
+        res.json({ 
+            message: 'User profile retrieved successfully',
+            user: userWithoutPassword,
+            tokenValid: true,
+            timestamp: new Date().toISOString()
+        });
 
     } catch (error) {
-        console.error('Profile error:', error);
-        res.status(401).json({ error: 'Invalid token' });
+        console.error('❌ Profile error:', error.message);
+        if (error.name === 'JsonWebTokenError') {
+            console.log('🔒 Invalid JWT token');
+            res.status(401).json({ error: 'Invalid token' });
+        } else if (error.name === 'TokenExpiredError') {
+            console.log('⏰ JWT token expired');
+            res.status(401).json({ error: 'Token expired' });
+        } else {
+            console.log('💥 Unexpected error:', error.message);
+            res.status(500).json({ error: 'Internal server error' });
+        }
     }
 });
 

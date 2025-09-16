@@ -4,6 +4,7 @@ dotenv.config();
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
 import { userRoutes } from "./routes/user/index.js";
 import { teamRoutes } from "./routes/team/index.js";
 import initializeDatabase from "./initDb.js";
@@ -12,8 +13,12 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:5173', // Frontend URL
+    credentials: true // Allow cookies
+}));
 app.use(express.json());
+app.use(cookieParser());
 
 // Initialize database on startup
 initializeDatabase().catch(console.error);
