@@ -1,4 +1,3 @@
-// Load environment variables
 dotenv.config();
 
 import express from "express";
@@ -12,27 +11,22 @@ import initializeDatabase from "./initDb.js";
 const PORT = process.env.PORT || 3000;
 const app = express();
 
-// Middleware
 app.use(cors({
-    origin: 'http://localhost:5173', // Frontend URL
-    credentials: true // Allow cookies
+    origin: 'http://localhost:5173', 
+    credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser());
 
-// Initialize database on startup
 initializeDatabase().catch(console.error);
 
-// Health check
 app.get("/health", (req, res) => {
     res.json({ status: "ok", message: "Team Management API is running" });
 });
 
-// API Routes
 app.use("/api/users", userRoutes);
-// app.use("/api/teams", teamRoutes);
+app.use("/api/teams", teamRoutes);
 
-// Root endpoint
 app.get("/", (req, res) => {
     res.json({ 
         message: "Team Management API", 
@@ -48,6 +42,6 @@ app.get("/", (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📋 API Documentation: http://localhost:${PORT}`);
+    console.log(`Server running on port ${PORT}`);
+    console.log(`API Documentation: http://localhost:${PORT}`);
 });

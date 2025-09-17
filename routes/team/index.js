@@ -5,82 +5,57 @@ import pool from '../../db.js';
 
 const router = express.Router();
 
-// Helper function to generate unique team code (integer)
-const generateTeamCode = () => {
-    return Math.floor(Math.random() * 900000) + 100000; // 6-digit number
-};
-
-// Create Team API
-router.post('/create', async (req, res) => {
+router.post('/create-team', async (req, res) => {
     try {
-        const { teamName, teamDescription, userName, email, password } = req.body;
+        const { teamName, description, userName, email, teamCode } = req.body;
+        console.log("teamName", teamName)
+        console.log("description", description)
+        console.log("userName", userName)
+        console.log("email", email)
+        console.log("teamCode", teamCode)
 
-        // Validate required fields
-        if (!teamName || !userName || !email || !password) {
-            return res.status(400).json({ 
-                error: 'Team name, user name, email, and password are required' 
+        if (!teamName || !userName || !email || !teamCode) {
+            return res.status(400).json({
+                error: 'Team name, user name, email, and teamCode are required'
             });
         }
 
-        // Check if user already exists
-        const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
-        if (existingUser.rows.length > 0) {
-            return res.status(400).json({ error: 'User with this email already exists' });
-        }
-
-        // Generate unique team code
-        let teamCode;
-        let isUnique = false;
-        while (!isUnique) {
-            teamCode = generateTeamCode();
-            const existingTeam = await pool.query('SELECT id FROM teams WHERE team_code = $1', [teamCode]);
-            if (existingTeam.rows.length === 0) {
-                isUnique = true;
-            }
-        }
-
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Start transaction
         await pool.query('BEGIN');
 
         try {
-            // Create team
             const teamResult = await pool.query(
-                'INSERT INTO teams (name, description, team_code, created_by) VALUES ($1, $2, $3, $4) RETURNING *',
-                [teamName, teamDescription || '', teamCode, userName]
+                'INSERT INTO teams (team_name, description, team_code, created_by) VALUES ($1, $2, $3, $4) RETURNING *',
+                [teamName, description || '', teamCode, userName]
             );
             const team = teamResult.rows[0];
 
-            // Create user as team creator
             const userResult = await pool.query(
-                'INSERT INTO users (name, email, password, team_id, role) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-                [userName, email, hashedPassword, team.id, 'admin']
+                `UPDATE users 
+                 SET team_code = $1, team = $2, role = $3, updated_at = NOW()
+                 WHERE email = $4
+                 RETURNING *`,
+                [team.team_code, team.team_name, 'admin', email]
             );
             const user = userResult.rows[0];
 
-            // Add user to team_members table
             await pool.query(
-                'INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3)',
+                'INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
                 [team.id, user.id, 'admin']
             );
 
             await pool.query('COMMIT');
 
-            // Generate JWT token
             const token = jwt.sign(
-                { 
-                    userId: user.id, 
-                    email: user.email, 
+                {
+                    userId: user.id,
+                    email: user.email,
                     teamId: team.id,
-                    role: 'admin' 
+                    role: 'admin'
                 },
-                process.env.JWT_SECRET || 'your-secret-key',
-                { expiresIn: '24h' }
+                process.env.JWT_SECRET,
+                { expiresIn: '240h' }
             );
 
-            // Return response without password
             const { password: _, ...userWithoutPassword } = user;
 
             res.status(201).json({
@@ -88,7 +63,7 @@ router.post('/create', async (req, res) => {
                 token,
                 team: {
                     id: team.id,
-                    name: team.name,
+                    name: team.team_name,
                     description: team.description,
                     team_code: team.team_code
                 },
@@ -106,25 +81,18 @@ router.post('/create', async (req, res) => {
     }
 });
 
-// Join Team API
-router.post('/join', async (req, res) => {
+router.post('/join-team', async (req, res) => {
     try {
-        const { teamCode, userName, email, password } = req.body;
+        const { teamCode, userName, email } = req.body;
 
-        // Validate required fields
-        if (!teamCode || !userName || !email || !password) {
-            return res.status(400).json({ 
-                error: 'Team code, user name, email, and password are required' 
+        if (!teamCode || !userName || !email) {
+            return res.status(400).json({
+                error: 'Team code, user name, and email are required'
             });
         }
 
-        // Check if user already exists
-        const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
-        if (existingUser.rows.length > 0) {
-            return res.status(400).json({ error: 'User with this email already exists' });
-        }
+        const existingUser = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
 
-        // Find team by team code
         const teamResult = await pool.query('SELECT * FROM teams WHERE team_code = $1', [teamCode]);
         const team = teamResult.rows[0];
 
@@ -132,41 +100,47 @@ router.post('/join', async (req, res) => {
             return res.status(404).json({ error: 'Team not found with this code' });
         }
 
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Start transaction
         await pool.query('BEGIN');
 
         try {
-            // Create user
-            const userResult = await pool.query(
-                'INSERT INTO users (name, email, password, team_id, role) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-                [userName, email, hashedPassword, team.id, 'member']
-            );
-            const user = userResult.rows[0];
+            let user;
+            if (existingUser.rows.length > 0) {
+                const updated = await pool.query(
+                    `UPDATE users 
+                     SET team_code = $1, team = $2, role = $3, updated_at = NOW()
+                     WHERE id = $4
+                     RETURNING *`,
+                    [team.team_code, team.team_name, 'member', existingUser.rows[0].id]
+                );
+                user = updated.rows[0];
+            } else {
+                const created = await pool.query(
+                    `INSERT INTO users (fullname, email, password, team_code, team, role)
+                     VALUES ($1, $2, $3, $4, $5, $6)
+                     RETURNING *`,
+                    [userName, email, '', team.team_code, team.team_name, 'member']
+                );
+                user = created.rows[0];
+            }
 
-            // Add user to team_members table
             await pool.query(
-                'INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3)',
+                'INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
                 [team.id, user.id, 'member']
             );
 
             await pool.query('COMMIT');
 
-            // Generate JWT token
             const token = jwt.sign(
-                { 
-                    userId: user.id, 
-                    email: user.email, 
+                {
+                    userId: user.id,
+                    email: user.email,
                     teamId: team.id,
-                    role: 'member' 
+                    role: 'member'
                 },
                 process.env.JWT_SECRET || 'your-secret-key',
                 { expiresIn: '24h' }
             );
 
-            // Return response without password
             const { password: _, ...userWithoutPassword } = user;
 
             res.status(201).json({
@@ -174,7 +148,7 @@ router.post('/join', async (req, res) => {
                 token,
                 team: {
                     id: team.id,
-                    name: team.name,
+                    name: team.team_name,
                     description: team.description,
                     team_code: team.team_code
                 },
@@ -192,23 +166,22 @@ router.post('/join', async (req, res) => {
     }
 });
 
-// Get team members (protected route)
 router.get('/members', async (req, res) => {
     try {
         const token = req.headers.authorization?.split(' ')[1];
-        
+
         if (!token) {
             return res.status(401).json({ error: 'No token provided' });
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-        
+
         if (!decoded.teamId) {
             return res.status(400).json({ error: 'User is not part of any team' });
         }
 
         const membersResult = await pool.query(
-            `SELECT u.id, u.name, u.email, u.role, tm.joined_at 
+            `SELECT u.id, u.fullname as name, u.email, u.role, tm.joined_at 
              FROM users u 
              JOIN team_members tm ON u.id = tm.user_id 
              WHERE tm.team_id = $1 
@@ -221,6 +194,49 @@ router.get('/members', async (req, res) => {
     } catch (error) {
         console.error('Get members error:', error);
         res.status(401).json({ error: 'Invalid token' });
+    }
+});
+
+router.get('/:teamName', async (req, res) => {
+    try {
+        const { teamName } = req.params;
+        console.log('somehthing comming from frontend', teamName)
+
+        const teamResult = await pool.query(
+            'SELECT * FROM teams WHERE team_name = $1',
+            [teamName]
+        );
+        if (!teamResult) {
+            return res.status(404).json({ error: 'teamResult not found' });
+        }
+        const team = teamResult.rows[0];
+        if (!team) {
+            return res.status(404).json({ error: 'Team not found' });
+        }
+
+        const membersResult = await pool.query(
+            `SELECT u.id, u.fullname as name, u.email, tm.role, tm.joined_at
+             FROM team_members tm
+             JOIN users u ON u.id = tm.user_id
+             WHERE tm.team_id = $1
+             ORDER BY tm.joined_at ASC`,
+            [team.id]
+        );
+
+        res.json({
+            team: {
+                id: team.id,
+                name: team.team_name,
+                description: team.description,
+                team_code: team.team_code,
+                created_by: team.created_by,
+                created_at: team.created_at,
+            },
+            members: membersResult.rows,
+        });
+    } catch (error) {
+        console.error('Get team by name error:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
