@@ -34,9 +34,10 @@ app.get("/", (req, res) => {
             "POST /api/users/register": "Register a new user account",
             "POST /api/users/login": "Login to access team data",
             "GET /api/users/profile": "Get user profile (requires token)",
-            "POST /api/teams/create": "Create a new team",
-            "POST /api/teams/join": "Join an existing team",
-            "GET /api/teams/members": "Get team members (requires token)"
+            "POST /api/teams/create-team": "Create a new team",
+            "POST /api/teams/join-team": "Join an existing team",
+            "GET /api/teams/members": "Get team members (requires token)",
+            "GET /api/teams/:teamName": "Get teams details (requires token)"
         }
     });
 });
