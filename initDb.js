@@ -8,6 +8,19 @@ const initializeDatabase = async () => {
         console.log("test Result: ", testResult)
         console.log('Database connection successful:', testResult.rows[0].now);
 
+         await pool.query(`
+            CREATE TABLE IF NOT EXISTS notes (
+                id SERIAL PRIMARY KEY,
+                heading TEXT,
+                text TEXT,
+                team_name VARCHAR(255) NOT NULL,
+                member_email VARCHAR(255) NOT NULL,
+                member_name VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
         await pool.query(`
             CREATE TABLE IF NOT EXISTS teams (
                 id SERIAL PRIMARY KEY,
@@ -55,7 +68,6 @@ const initializeDatabase = async () => {
 
     } catch (error) {
         console.error('Database initialization failed:', error);
-        console.log('Server will continue running, but database operations may fail');
     }
 };
 

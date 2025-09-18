@@ -8,11 +8,6 @@ const router = express.Router();
 router.post('/create-team', async (req, res) => {
     try {
         const { teamName, description, userName, email, teamCode } = req.body;
-        console.log("teamName", teamName)
-        console.log("description", description)
-        console.log("userName", userName)
-        console.log("email", email)
-        console.log("teamCode", teamCode)
 
         if (!teamName || !userName || !email || !teamCode) {
             return res.status(400).json({
@@ -166,78 +161,213 @@ router.post('/join-team', async (req, res) => {
     }
 });
 
-router.get('/members', async (req, res) => {
-    try {
-        const token = req.headers.authorization?.split(' ')[1];
+// router.get('/members', async (req, res) => {
+//     try {
+//         const token = req.headers.authorization?.split(' ')[1];
 
-        if (!token) {
-            return res.status(401).json({ error: 'No token provided' });
-        }
+//         if (!token) {
+//             return res.status(401).json({ error: 'No token provided' });
+//         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+//         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
 
-        if (!decoded.teamId) {
-            return res.status(400).json({ error: 'User is not part of any team' });
-        }
+//         if (!decoded.teamId) {
+//             return res.status(400).json({ error: 'User is not part of any team' });
+//         }
 
-        const membersResult = await pool.query(
-            `SELECT u.id, u.fullname as name, u.email, u.role, tm.joined_at 
-             FROM users u 
-             JOIN team_members tm ON u.id = tm.user_id 
-             WHERE tm.team_id = $1 
-             ORDER BY tm.joined_at ASC`,
-            [decoded.teamId]
-        );
+//         const membersResult = await pool.query(
+//             `SELECT u.id, u.fullname as name, u.email, u.role, tm.joined_at 
+//              FROM users u 
+//              JOIN team_members tm ON u.id = tm.user_id 
+//              WHERE tm.team_id = $1 
+//              ORDER BY tm.joined_at ASC`,
+//             [decoded.teamId]
+//         );
 
-        res.json({ members: membersResult.rows });
+//         res.json({ members: membersResult.rows });
 
-    } catch (error) {
-        console.error('Get members error:', error);
-        res.status(401).json({ error: 'Invalid token' });
-    }
-});
+//     } catch (error) {
+//         console.error('Get members error:', error);
+//         res.status(401).json({ error: 'Invalid token' });
+//     }
+// });
+
+// router.get('/:teamName', async (req, res) => {
+//     try {
+//         const { teamName } = req.params;
+//         console.log('somehthing comming from frontend', teamName)
+
+//         const teamResult = await pool.query(
+//             'SELECT * FROM teams WHERE team_name = $1',
+//             [teamName]
+//         );
+//         if (!teamResult) {
+//             return res.status(404).json({ error: 'teamResult not found' });
+//         }
+//         const team = teamResult.rows[0];
+//         if (!team) {
+//             return res.status(404).json({ error: 'Team not found' });
+//         }
+
+//         const membersResult = await pool.query(
+//             `SELECT u.id, u.fullname as name, u.email, tm.role, tm.joined_at
+//              FROM team_members tm
+//              JOIN users u ON u.id = tm.user_id
+//              WHERE tm.team_id = $1
+//              ORDER BY tm.joined_at ASC`,
+//             [team.id]
+//         );
+
+//         res.json({
+//             team: {
+//                 id: team.id,
+//                 name: team.team_name,
+//                 description: team.description,
+//                 team_code: team.team_code,
+//                 created_by: team.created_by,
+//                 created_at: team.created_at,
+//             },
+//             members: membersResult.rows,
+//         });
+//     } catch (error) {
+//         console.error('Get team by name error:', error);
+//         res.status(500).json({ error: 'Internal server error' });
+//     }
+// });
+
+// Get all notes for a specific team
 
 router.get('/:teamName', async (req, res) => {
     try {
         const { teamName } = req.params;
-        console.log('somehthing comming from frontend', teamName)
 
-        const teamResult = await pool.query(
-            'SELECT * FROM teams WHERE team_name = $1',
-            [teamName]
-        );
-        if (!teamResult) {
-            return res.status(404).json({ error: 'teamResult not found' });
+        try {
+            // Get team ID from team name
+            const teamResult = await pool.query(
+                'SELECT * FROM teams WHERE team_name = $1',
+                [teamName]
+            );
+            //
+            console.log("team result :: ", teamResult);
+
+            if (!teamResult) {
+                return res.status(404).json({ error: 'teamResult not found' });
+            }
+            const team = teamResult.rows[0];
+            if (!team) {
+                return res.status(404).json({ error: 'Team not found' });
+            }
+            //
+            console.log("succes 1");
+
+
+            const membersResult = await pool.query(
+               `SELECT u.id, u.fullname as name, u.email, tm.role, tm.joined_at
+                FROM team_members tm
+                JOIN users u ON u.id = tm.user_id
+                WHERE tm.team_id = $1
+                ORDER BY tm.joined_at ASC`,
+                [team.id]
+            );
+            console.log("memeber result :: ", membersResult);
+
+            if (!membersResult) {
+                return res.status(403).json({ error: 'You are not a member of this team' });
+            }
+            console.log("success 2");
+
+            // Get all notes for the team
+            const notesResult = await pool.query(
+                'SELECT * FROM notes WHERE team_name = $1 ORDER BY created_at DESC',
+                [teamName]
+              );              
+
+            let notesResultError;
+
+            if (notesResult) {
+                notesResultError = "currently you have 0 notes in your collection"
+            }
+            //
+            console.log("notes result :: ", notesResult);
+            const notes = notesResult.rows
+            console.log("notes row 1 is here :: here :: ", notes)
+            // res.json({
+            //     team: {
+            //         id: team.id,
+            //         name: team.team_name,
+            //         description: team.description,
+            //         team_code: team.team_code,
+            //         created_by: team.created_by,
+            //         created_at: team.created_at,
+            //     },
+            //     members: membersResult.rows,
+            // });
+            console.log("here s the output _____________________________________");
+
+            return res.status(200).json({
+                success: true,
+                notes: notes || notesResultError,
+                team: {
+                    id: team.id,
+                    name: team.team_name,
+                    description: team.description,
+                    team_code: team.team_code,
+                    created_by: team.created_by,
+                    created_at: team.created_at,
+                },
+                members: membersResult.rows,
+            });
+        } catch (error) {
+            console.error('Token verification error:', error);
+            return res.status(401).json({ error: 'Invalid or expired token' });
         }
-        const team = teamResult.rows[0];
-        if (!team) {
-            return res.status(404).json({ error: 'Team not found' });
-        }
-
-        const membersResult = await pool.query(
-            `SELECT u.id, u.fullname as name, u.email, tm.role, tm.joined_at
-             FROM team_members tm
-             JOIN users u ON u.id = tm.user_id
-             WHERE tm.team_id = $1
-             ORDER BY tm.joined_at ASC`,
-            [team.id]
-        );
-
-        res.json({
-            team: {
-                id: team.id,
-                name: team.team_name,
-                description: team.description,
-                team_code: team.team_code,
-                created_by: team.created_by,
-                created_at: team.created_at,
-            },
-            members: membersResult.rows,
-        });
     } catch (error) {
-        console.error('Get team by name error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Error fetching team notes:', error);
+        return res.status(500).json({ error: 'Server error' });
     }
 });
 
+// router.get('/:teamName', async (req, res) => {
+//     try {
+//         const { teamName } = req.params;
+//         console.log('team you are getting redirected to is ', teamName)
+
+//         // const teamResult = await pool.query(
+//         //     'SELECT * FROM teams WHERE team_name = $1',
+//         //     [teamName]
+//         // );
+
+//         // if (!teamResult) {
+//         //     return res.status(404).json({ error: 'teamResult not found' });
+//         // }
+//         // const team = teamResult.rows[0];
+//         // if (!team) {
+//         //     return res.status(404).json({ error: 'Team not found' });
+//         // }
+
+//         const membersResult = await pool.query(
+//             `SELECT u.id, u.fullname as name, u.email, tm.role, tm.joined_at
+//              FROM team_members tm
+//              JOIN users u ON u.id = tm.user_id
+//              WHERE tm.team_id = $1
+//              ORDER BY tm.joined_at ASC`,
+//             [team.id]
+//         );
+
+//         res.json({
+//             team: {
+//                 id: team.id,
+//                 name: team.team_name,
+//                 description: team.description,
+//                 team_code: team.team_code,
+//                 created_by: team.created_by,
+//                 created_at: team.created_at,
+//             },
+//             members: membersResult.rows,
+//         });
+//     } catch (error) {
+//         console.error('Get team by name error:', error);
+//         res.status(500).json({ error: 'Internal server error' });
+//     }
+// });
 export { router as teamRoutes };

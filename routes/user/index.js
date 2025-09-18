@@ -9,9 +9,9 @@ router.post('/register', async (req, res) => {
     try {
         const { email, password, fullName } = req.body;
 
-        console.log("email: ", email)
-        console.log("pwd: ", password)
-        console.log("fullname: ", fullName)
+        console.log("email : ", email)
+        console.log("pass : ", password)
+        console.log("fullname : ", fullName)
 
         if (!email || !password || !fullName) {
             return res.status(400).json({
@@ -113,21 +113,17 @@ router.post('/login', async (req, res) => {
 
 router.get('/profile', async (req, res) => {
     try {
-        console.log('Profile route accessed');
         
         const token = req.headers.authorization?.split(' ')[1];
         console.log('Token received:', token ? 'Token present' : 'No token');
 
         if (!token) {
-            console.log('No token provided');
             return res.status(401).json({ error: 'No token provided' });
         }
 
-        console.log('Verifying JWT token...');
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         console.log('Token verified successfully. User ID:', decoded.userId, 'Email:', decoded.email);
 
-        console.log('Fetching user data from database...');
         const userResult = await pool.query(
             'SELECT * FROM users WHERE id = $1',
             [decoded.userId]

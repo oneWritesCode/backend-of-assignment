@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import { userRoutes } from "./routes/user/index.js";
 import { teamRoutes } from "./routes/team/index.js";
+import { notesRoutes } from "./routes/notes/index.js";
 import initializeDatabase from "./initDb.js";
 
 const PORT = process.env.PORT || 3000;
@@ -26,6 +27,7 @@ app.get("/health", (req, res) => {
 
 app.use("/api/users", userRoutes);
 app.use("/api/teams", teamRoutes);
+app.use("/api/notes", notesRoutes);
 
 app.get("/", (req, res) => {
     res.json({ 
@@ -37,12 +39,16 @@ app.get("/", (req, res) => {
             "POST /api/teams/create-team": "Create a new team",
             "POST /api/teams/join-team": "Join an existing team",
             "GET /api/teams/members": "Get team members (requires token)",
-            "GET /api/teams/:teamName": "Get teams details (requires token)"
+            "GET /api/teams/:teamName": "Get teams details (requires token)",
+            "POST /api/notes/create": "Create a new note (requires token)",
+            "GET /api/notes/team/:teamId": "Get all notes for a team (requires token)",
+            "GET /api/notes/:id": "Get a specific note by ID (requires token)",
+            "PUT /api/notes/:id": "Update a note (requires token)",
+            "DELETE /api/notes/:id": "Delete a note (requires token)"
         }
     });
 });
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-    console.log(`API Documentation: http://localhost:${PORT}`);
 });
