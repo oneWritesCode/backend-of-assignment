@@ -8,11 +8,6 @@ const router = express.Router();
 router.post('/create-team', async (req, res) => {
     try {
         const { teamName, description, userName, email, teamCode } = req.body;
-        console.log("teamName", teamName)
-        console.log("description", description)
-        console.log("userName", userName)
-        console.log("email", email)
-        console.log("teamCode", teamCode)
 
         if (!teamName || !userName || !email || !teamCode) {
             return res.status(400).json({
