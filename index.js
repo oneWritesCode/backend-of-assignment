@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import { userRoutes } from "./routes/user/index.js";
 import { teamRoutes } from "./routes/team/index.js";
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    import { notesRoutes } from "./routes/notes/index.js";
 import initializeDatabase from "./initDb.js";
 
 const PORT = process.env.PORT || 3000;
@@ -18,7 +19,7 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-initializeDatabase().catch(console.error);
+initializeDatabase().catch(console.error);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
 
 app.get("/health", (req, res) => {
     res.json({ status: "ok", message: "Team Management API is running" });
@@ -26,6 +27,7 @@ app.get("/health", (req, res) => {
 
 app.use("/api/users", userRoutes);
 app.use("/api/teams", teamRoutes);
+app.use("/api/notes", notesRoutes);
 
 app.get("/", (req, res) => {
     res.json({ 
@@ -37,7 +39,13 @@ app.get("/", (req, res) => {
             "POST /api/teams/create-team": "Create a new team",
             "POST /api/teams/join-team": "Join an existing team",
             "GET /api/teams/members": "Get team members (requires token)",
-            "GET /api/teams/:teamName": "Get teams details (requires token)"
+            "GET /api/teams/:teamName": "Get teams details (requires token)",
+            "POST /api/notes/create": "Create a new note",
+            "GET /api/notes/team/:teamName": "Get notes for a specific team",
+            "GET /api/notes": "Get all notes",
+            "GET /api/notes/:id": "Get a specific note by ID",
+            "PUT /api/notes/:id": "Update a note",
+            "DELETE /api/notes/:id": "Delete a note"
         }
     });
 });

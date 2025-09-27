@@ -51,6 +51,19 @@ const initializeDatabase = async () => {
             )
         `);
 
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS notes (
+                id SERIAL PRIMARY KEY,
+                heading VARCHAR(255) NOT NULL,
+                text TEXT NOT NULL,
+                member_name VARCHAR(255) NOT NULL,
+                member_email VARCHAR(255) NOT NULL,
+                team_name VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
         console.log(' Database tables created successfully!');
 
     } catch (error) {

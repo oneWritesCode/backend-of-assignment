@@ -218,6 +218,14 @@ router.get('/:teamName', async (req, res) => {
             [team.id]
         );
 
+        // Fetch notes for this team
+        const notesResult = await pool.query(
+            `SELECT * FROM notes 
+             WHERE team_name = $1 
+             ORDER BY created_at DESC`,
+            [teamName]
+        );
+
         res.json({
             team: {
                 id: team.id,
@@ -228,6 +236,7 @@ router.get('/:teamName', async (req, res) => {
                 created_at: team.created_at,
             },
             members: membersResult.rows,
+            notes: notesResult.rows,
         });
     } catch (error) {
         console.error('Get team by name error:', error);
